@@ -1,18 +1,26 @@
 // src/libs/api.ts
-import { getJWT, clearJWT } from '@/libs/auth'
+export class ApiError extends Error {
+  status: number
+  payload: unknown
+  constructor(status: number, payload: unknown, message?: string) {
+    super(message || `API ${status}`)
+    this.name = 'ApiError'
+    this.status = status
+    this.payload = payload
+  }
+}
 
-type ApiInput<TBody = unknown> = {
+type ApiInput = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   headers?: Record<string, string>
-  body?: TBody
+  body?: unknown
   skipAuth?: boolean
   signal?: AbortSignal
 }
 
-export async function apiFetch<TResp = unknown, TBody = unknown>(
-  path: string,
-  options: ApiInput<TBody> = {}
-): Promise<TResp> {
+import { getJWT, clearJWT } from '@/libs/auth'
+
+export async function apiFetch<T = unknown>(path: string, options: ApiInput = {}): Promise<T> {
   const { method = 'GET', headers = {}, body, skipAuth, signal } = options
 
   const baseHeaders: Record<string, string> = {
@@ -28,18 +36,24 @@ export async function apiFetch<TResp = unknown, TBody = unknown>(
   const res = await fetch(path, {
     method,
     headers: baseHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body != null ? JSON.stringify(body) : undefined,
     signal,
   })
 
   const text = await res.text()
-  const data = text ? (() => { try { return JSON.parse(text) } catch { return text } })() : null
+  let data: unknown = null
+  if (text) {
+    try { data = JSON.parse(text) } catch { data = text }
+  }
 
   if (!res.ok) {
     if (res.status === 401) await clearJWT()
-    const detail = (data && (data.detail || data.error)) || res.statusText
-    throw new Error(`API ${res.status}: ${detail}`)
+    // DRF가 내려주는 detail / errors를 살려서 throw
+    const msg =
+      (typeof data === 'object' && data && ('detail' in (data as any))) ? (data as any).detail :
+      res.statusText || 'Request failed'
+    throw new ApiError(res.status, data, msg)
   }
 
-  return data as TResp
+  return data as T
 }

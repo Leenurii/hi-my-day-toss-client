@@ -1,9 +1,9 @@
 // src/pages/Write.tsx
 import { useState } from 'react'
-import { FixedBottomCTA, Asset, TextField, SegmentedControl, TextArea, Post, Paragraph, Text} from '@toss/tds-mobile'
+import { FixedBottomCTA, Asset, TextField, SegmentedControl, TextArea, Post, Paragraph, useDialog} from '@toss/tds-mobile'
 import { apiFetch } from '@/libs/api'
 import { useNavigate } from 'react-router-dom'
-import { adaptive } from '@toss/tds-colors';
+import { formatApiError } from '@/libs/errors'
 
 type WeatherKey = 'sunny' | 'cloudy' | 'rainy' | 'snowy'
 type MoodKey = 'very_bad' | 'bad' | 'neutral' | 'good' | 'very_good'
@@ -25,6 +25,8 @@ const MOOD: Record<MoodKey, { label: string; emojiSrc: string }> = {
 
 export default function Write() {
   const navigate = useNavigate()
+  const { openAlert } = useDialog()
+
 
   // 입력 상태
   const [title, setTitle] = useState('')
@@ -61,8 +63,12 @@ export default function Write() {
       })
       await apiFetch(`/api/entries/${entry.id}/analyze/`, { method: 'POST' })
       navigate(`/entries/${entry.id}`)
-    } catch (e: any) {
-      alert(e?.message ?? '저장/분석 중 오류가 발생했어요.')
+    } catch (err : unknown) {
+        openAlert({
+            title: '분석 실패',
+            description: formatApiError(err),
+            alertButton: '확인',
+        })
     }
   }
 

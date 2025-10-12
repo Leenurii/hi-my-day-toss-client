@@ -94,7 +94,7 @@ export default function EntryResult() {
         {data.analysis?.translation?.text && (
           <section style={{ marginBottom: 16 }}>
             <ListRow
-              left={<ListRow.AssetIcon name="icon-translate" />}
+              left={<ListRow.AssetIcon name="icon-pencil" />}
               contents={<ListRow.Texts type="2RowTypeA" top="번역" bottom={data.analysis.translation.text} />}
             />
           </section>
@@ -128,10 +128,6 @@ export default function EntryResult() {
             </ul>
           </section>
         )}
-
-        <section style={{ textAlign: 'center', marginTop: 16 }}>
-          <Asset.Image frameShape={{ width: 160 }} src="https://static.toss.im/3d-common/app-in-toss-spot.png" aria-hidden />
-        </section>
       </main>
     </>
   )

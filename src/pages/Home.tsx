@@ -91,7 +91,7 @@ export default function Home() {
       // 아직 없음 → 해당 날짜로 쓰기 페이지
         navigate(`/write?date=${key}`)
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       // (예: 401 등) 에러 시엔 일단 쓰기 페이지로 폴백
       console.warn('by-date check error:', e?.message || e)
       navigate(`/write?date=${key}`)
