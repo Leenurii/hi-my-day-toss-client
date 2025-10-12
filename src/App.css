@@ -1,0 +1,49 @@
+#root {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: initial;
+  width: 100%;
+}
+
+.react-calendar__tile.rc-has-entry {
+  background: #f5f6f8;
+  border-radius: 8px;
+}
+.react-calendar__tile.rc-has-entry:enabled:hover {
+  background: #eaeef3;
+}
+.react-calendar__tile--now {
+  background: #eef6ff;
+  border-radius: 8px;
+  color: #111;
+}
+.react-calendar__month-view__days {
+  /* gap: 6px; */
+  padding: 4px;
+}
+.react-calendar__tile {
+  border-radius: 8px;
+  padding: 0.7rem 0;
+}
+
+/* Embla base */
+.quote-embla { position: relative; overflow: hidden; }
+.quote-embla__container { display: flex; gap: 12px; }
+.quote-embla__slide { flex: 0 0 100%; min-width: 0; }
+
+/* 카드 */
+.quote-card {
+  background: #F5F6F8; border-radius: 16px; padding: 20px 16px;
+  text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.quote-title { font-size: 18px; margin: 0 0 8px; color: #222; }
+.quote-en { font-size: 16px; font-weight: 600; color: #111; margin: 0; }
+.quote-ko { font-size: 14px; color: #666; margin: 6px 0 0; }
+
+/* 도트 */
+.quote-dots { display:flex; justify-content:center; gap:8px; margin-top:10px; }
+.quote-dot {
+  width:6px; height:6px; border-radius:9999px; background:#D1D5DB; border:0; padding:0;
+}
+.quote-dot.is-active { background:#60A5FA; /* 토스 블루 계열 */ }
