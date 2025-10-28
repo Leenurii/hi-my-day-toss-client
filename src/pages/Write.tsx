@@ -1,6 +1,14 @@
-// src/pages/Write.tsx
 import { useState } from 'react'
-import { FixedBottomCTA, Asset, TextField, SegmentedControl, TextArea, Post, Paragraph, useDialog} from '@toss/tds-mobile'
+import {
+  FixedBottomCTA,
+  Asset,
+  TextField,
+  SegmentedControl,
+  TextArea,
+  Post,
+  Paragraph,
+  useDialog
+} from '@toss/tds-mobile'
 import { apiFetch } from '@/libs/api'
 import { useNavigate } from 'react-router-dom'
 import { formatApiError } from '@/libs/errors'
@@ -16,17 +24,19 @@ const WEATHER: Record<WeatherKey, { label: string; emojiSrc: string }> = {
 }
 
 const MOOD: Record<MoodKey, { label: string; emojiSrc: string }> = {
-  very_bad: { label: '나쁨',        emojiSrc: 'https://static.toss.im/3d-emojis/u1F614.png' },
-  bad:      { label: '조금 나쁨',   emojiSrc: 'https://static.toss.im/3d-emojis/u1F615.png' },
-  neutral:  { label: '보통',        emojiSrc: 'https://static.toss.im/3d-emojis/u1F610.png' },
-  good:     { label: '좋음',        emojiSrc: 'https://static.toss.im/3d-emojis/u1F603.png' },
-  very_good:{ label: '아주좋음',    emojiSrc: 'https://static.toss.im/3d-emojis/u1F60D.png' },
+  very_bad: { label: '나쁨',      emojiSrc: 'https://static.toss.im/3d-emojis/u1F614.png' },
+  bad:      { label: '조금 나쁨', emojiSrc: 'https://static.toss.im/3d-emojis/u1F615.png' },
+  neutral:  { label: '보통',      emojiSrc: 'https://static.toss.im/3d-emojis/u1F610.png' },
+  good:     { label: '좋음',      emojiSrc: 'https://static.toss.im/3d-emojis/u1F603.png' },
+  very_good:{ label: '아주좋음',  emojiSrc: 'https://static.toss.im/3d-emojis/u1F60D.png' },
 }
 
 export default function Write() {
   const navigate = useNavigate()
   const { openAlert } = useDialog()
 
+  // 로딩 상태
+  const [loading, setLoading] = useState(false)
 
   // 입력 상태
   const [title, setTitle] = useState('')
@@ -41,7 +51,6 @@ export default function Write() {
   const charCount = text.length
   const hasError = charCount > 0 && charCount < MIN_CHARS
 
-  // ✅ 누락됐던 변수들 정의
   const titleError = title.trim().length < 2
   const bodyError = hasError
 
@@ -50,27 +59,46 @@ export default function Write() {
     : `${charCount}자`
 
   const onSaveAnalyze = async () => {
+    // 이미 전송 중이면 중복 실행 막기
+    if (loading) return
+
+    setLoading(true)
+
     try {
       const payload = {
         title: title.trim(),
         meta: { weather, mood },
-        original_lang: 'en',     // 영어 전용
+        original_lang: 'en',
         original_text: text,
       }
+
       const entry = await apiFetch<{ id: number }>('/api/entries/', {
         method: 'POST',
         body: payload,
       })
+
       await apiFetch(`/api/entries/${entry.id}/analyze/`, { method: 'POST' })
+
+      // 성공하면 디테일 페이지로 이동
       navigate(`/entries/${entry.id}`)
-    } catch (err : unknown) {
-        openAlert({
-            title: '분석 실패',
-            description: formatApiError(err),
-            alertButton: '확인',
-        })
+    } catch (err: unknown) {
+      // 실패 시 얼럿
+      openAlert({
+        title: '분석 실패',
+        description: formatApiError(err),
+        alertButton: '확인',
+      })
+      // 실패했으니까 다시 작성 가능하게 로딩 off
+      setLoading(false)
     }
   }
+
+  const isDisabled =
+    loading ||
+    !title.trim() ||
+    !text.trim() ||
+    titleError ||
+    bodyError
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -86,6 +114,7 @@ export default function Write() {
             onChange={(e) => setTitle(e.target.value)}
             hasError={title.length > 0 && titleError}
             help={title.length > 0 && titleError ? '2글자 이상 입력해 주세요.' : null}
+            disabled={loading}
           />
         </section>
 
@@ -101,6 +130,7 @@ export default function Write() {
             size="large"
             name="mood"
             onValueChange={(v) => setMood(v as MoodKey)}
+            disabled={loading}
           >
             {(Object.keys(MOOD) as MoodKey[]).map((k) => (
               <SegmentedControl.Item key={k} value={k}>
@@ -130,6 +160,7 @@ export default function Write() {
             size="large"
             name="weather"
             onValueChange={(v) => setWeather(v as WeatherKey)}
+            disabled={loading}
           >
             {(Object.keys(WEATHER) as WeatherKey[]).map((k) => (
               <SegmentedControl.Item key={k} value={k}>
@@ -147,7 +178,7 @@ export default function Write() {
           </SegmentedControl>
         </section>
 
-        {/* 본문 입력 (영어 전용, 50자 이상) */}
+        {/* 본문 입력 */}
         <section style={{ marginTop: 16 }}>
           <TextArea
             variant="box"
@@ -157,15 +188,16 @@ export default function Write() {
             onChange={(e) => setText(e.target.value)}
             hasError={bodyError}
             help={helpText}
+            disabled={loading}
           />
         </section>
       </main>
 
       <footer>
         <FixedBottomCTA
-          loading={false}
+          loading={loading}         // <-- 여기
           onClick={onSaveAnalyze}
-          disabled={!title.trim() || !text.trim() || titleError || bodyError}
+          disabled={isDisabled}      // 로딩 중에도 비활성화
         >
           저장하고 AI 분석 받기
         </FixedBottomCTA>
