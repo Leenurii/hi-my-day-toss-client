@@ -1,4 +1,3 @@
-// src/pages/Home.tsx
 import '../App.css'
 import 'react-calendar/dist/Calendar.css'
 import { useEffect, useMemo, useState } from 'react'
@@ -6,20 +5,26 @@ import { Top, FixedBottomCTA, Asset} from '@toss/tds-mobile'
 import Calendar from 'react-calendar'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import type { Variants } from 'framer-motion'
 import QuoteCarousel from '@/components/QuoteCarousel'
-import { apiFetch } from '@/libs/api'   // ✅ API 연동
+import { apiFetch } from '@/libs/api'   
 
 // 애니메이션 variants
-const container = {
+const container: Variants = {
   hidden: { opacity: 0, y: 24 },
   show: {
-    opacity: 1, y: 0,
-    transition: { duration: 0.5, ease: 'easeOut', when: 'beforeChildren', staggerChildren: 0.08 }
-  }
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5, 
+      when: 'beforeChildren',
+      staggerChildren: 0.08,
+    },
+  },
 }
 const item = {
   hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } }
+  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
 }
 
 // 로컬(한국시간) 기준 YYYY-MM-DD
@@ -44,12 +49,15 @@ export default function Home() {
 
   useEffect(() => {
     let alive = true
+    console.log('fetching calendar for', `${year}-${month}`)
     ;(async () => {
       try {
         // const data = await apiFetch<Record<string, number>>(
         //   `/api/entries/?calendar=1&month=${year}-${month}&dev_dummy=1`
         // )
-        const data = await apiFetch<Record<string,number>>(`/api/dev-calendar/?month=${year}-${month}`, { skipAuth: true })
+        const data = await apiFetch<Record<string, number>>(
+          `/api/entries/?calendar=1&month=${year}-${month}`
+        )
         if (alive) setCalendarMap(data || {})
       } catch (e) {
         console.warn('calendar load error', e)
@@ -88,10 +96,10 @@ export default function Home() {
         // 이미 작성된 날 → 결과 페이지로
         navigate(`/entries/${res.entry.id}`)
       } else {
-      // 아직 없음 → 해당 날짜로 쓰기 페이지
+        // 아직 없음 → 해당 날짜로 쓰기 페이지
         navigate(`/write?date=${key}`)
       }
-    } catch (e: unknown) {
+    } catch (e: any) {
       // (예: 401 등) 에러 시엔 일단 쓰기 페이지로 폴백
       console.warn('by-date check error:', e?.message || e)
       navigate(`/write?date=${key}`)
@@ -106,28 +114,53 @@ export default function Home() {
     return Object.keys(calendarMap).filter(k => k.startsWith(prefix)).length
   }, [calendarMap, year, month])
 
+  // ✅ 추가: 오늘 버튼 로직 (중복 작성 방지)
+  const goToday = async () => {
+    const today = new Date()
+    const key = localDateKey(today)
+
+    try {
+      const res = await apiFetch<{ exists: boolean; entry?: { id: number } }>(
+        `/api/entries/by-date/?date=${key}`
+      )
+
+      if (res?.exists && res.entry?.id) {
+        // 오늘 이미 쓴 일기가 있으면 → 분석 결과 페이지로 이동
+        navigate(`/entries/${res.entry.id}`)
+      } else {
+        // 없으면 → 오늘 날짜로 쓰기 시작
+        navigate(`/write?date=${key}`)
+      }
+    } catch (e: any) {
+      console.warn('goToday check error:', e?.message || e)
+      navigate(`/write?date=${key}`)
+    }
+  }
+
   return (
     <>
       <header>
         <Top 
-        style={{ }}
-        upperGap={0}
-        title={<Top.TitleParagraph>오늘은 어떤 하루였나요?
-        <Asset.Image
-            frameShape={Asset.frameShape.CleanW24}
-            backgroundColor="transparent"
-            src="https://static.toss.im/2d-emojis/png/4x/u1F60E.png"
-            aria-hidden={true}
-            style={{ aspectRatio: `1/1` }}
-        />
-
-        </Top.TitleParagraph>}
-        subtitleTop={<Top.SubtitleParagraph>간단하게라도 좋아요</Top.SubtitleParagraph>}
+          upperGap={0}
+          title={
+            <Top.TitleParagraph>
+              오늘은 어떤 하루였나요?
+              <Asset.Image
+                frameShape={Asset.frameShape.CleanW24}
+                backgroundColor="transparent"
+                src="https://static.toss.im/2d-emojis/png/4x/u1F60E.png"
+                aria-hidden={true}
+                style={{ aspectRatio: `1/1` }}
+              />
+            </Top.TitleParagraph>
+          }
+          subtitleTop={<Top.SubtitleParagraph>간단하게라도 좋아요</Top.SubtitleParagraph>}
         />
       </header>
 
-      <main style={{ padding: 16, paddingBottom: 120, marginTop: -26}}>
+      <main style={{ padding: 16, paddingBottom: 120, marginTop: -26 }}>
         <motion.div variants={container} initial="hidden" animate="show" style={{ willChange: 'transform,opacity' }}>
+          
           {/* 오늘 날짜 / 요약 */}
           <motion.section variants={item} style={{ marginBottom: 16 }}>
             <div
@@ -159,7 +192,7 @@ export default function Home() {
             </div>
           </motion.section>
 
-          {/* 오늘의 문장: API 없을 때는 기본 3개로 폴백 */}
+          {/* 오늘의 문장 */}
           <motion.section variants={item} style={{ marginBottom: 24 }}>
             <QuoteCarousel
               items={
@@ -184,37 +217,14 @@ export default function Home() {
               onClickDay={handleClickDay}
               tileClassName={tileClassName}
             />
-            <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, fontSize: 12, color: '#666', gap: 6 }}>
-              <span>✅</span>
-              <span>일기 작성 완료</span>
-            </div>
           </motion.section>
 
-          {/* AI 피드백 하이라이트 (샘플) */}
-          <motion.section variants={item}>
-            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>💡 AI 피드백 하이라이트</h4>
-            <div
-              style={{
-                borderRadius: 12,
-                background: '#F9FAFB',
-                padding: '12px 16px',
-                fontSize: 14,
-                lineHeight: 1.6,
-              }}
-            >
-              <p style={{ marginBottom: 6 }}>
-                “I’m used to getting up early.” → <strong>익숙해지다</strong> 표현이에요.
-              </p>
-              <p style={{ marginBottom: 0, color: '#666' }}>
-                오늘은 ‘be used to’ 구조를 복습해볼까요?
-              </p>
-            </div>
-          </motion.section>
         </motion.div>
       </main>
 
       <footer>
-        <FixedBottomCTA onClick={() => navigate('/write')}>
+        {/* ✅ 여기 onClick을 goToday로 변경 */}
+        <FixedBottomCTA {...({ onClick: goToday } as any)}>
           오늘 일기 쓰러 가기 ✍️
         </FixedBottomCTA>
       </footer>

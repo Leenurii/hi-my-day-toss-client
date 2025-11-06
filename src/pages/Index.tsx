@@ -10,12 +10,11 @@ import { useNavigate } from 'react-router-dom'
 
 export default function Index() {
   const [loading, setLoading] = useState(false)
-  const [jwt, setJwt] = useState<string | null>(null)
   const navigate = useNavigate()  
 
   async function handleStart() {
     try {
-      navigate('/write')
+      
       setLoading(true)
 
       // 1️⃣ 토스 로그인 SDK 호출
@@ -33,9 +32,7 @@ export default function Index() {
       if (appJWT) {
         await setJWT(appJWT)
         if (data.user?.tossUserKey) await setTossUserKey(String(data.user.tossUserKey))
-        setJwt(appJWT)
-        alert('로그인 성공! 일기를 시작할 수 있어요.')
-        navigate('/write')
+        navigate('/home')
       } else {
         alert('JWT를 받아오지 못했어요.')
         console.warn('응답 데이터:', data)
@@ -48,13 +45,13 @@ export default function Index() {
     }
   }
 
-  async function handleDevSkip() {
-    // 임의의 더미 JWT — 실제 검증은 안하지만 클라이언트 흐름 테스트용
-    const dummy = 'dev.dummy.jwt.token'
-    await setJWT(dummy)
-    await setTossUserKey('1234567890')
-    navigate('/home')
-  }
+  // async function handleDevSkip() {
+  //   // 임의의 더미 JWT — 실제 검증은 안하지만 클라이언트 흐름 테스트용
+  //   const dummy = 'dev.dummy.jwt.token'
+  //   await setJWT(dummy)
+  //   await setTossUserKey('1234567890')
+  //   navigate('/home')
+  // }
 
   // async function handleCheckLogin() {
   //   // 4️⃣ 저장된 JWT 확인
@@ -92,7 +89,7 @@ export default function Index() {
         <section style={{ textAlign: 'center' }}>
           <Asset.Image
             frameShape={{ width: 220 }}
-            src="https://static.toss.im/3d-common/app-in-toss-spot.png"
+            src="/image.png"
             aria-hidden={true}
           />
         </section>
@@ -150,9 +147,9 @@ export default function Index() {
           오늘 일기 시작하기
         </FixedBottomCTA>
 
-        <FixedBottomCTA {...{ onClick: handleDevSkip }}>
+        {/* <FixedBottomCTA {...{ onClick: handleDevSkip }}>
           (DEV) 백엔드 없이 바로 쓰기
-        </FixedBottomCTA>
+        </FixedBottomCTA> */}
 
         {/* <FixedBottomCTA 
           {...{ onClick: handleCheckLogin }}

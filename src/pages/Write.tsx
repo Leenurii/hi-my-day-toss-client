@@ -129,7 +129,7 @@ export default function Write() {
             value={mood}
             size="large"
             name="mood"
-            onValueChange={(v) => setMood(v as MoodKey)}
+            onChange={(v: string) => setMood(v as MoodKey)}
             disabled={loading}
           >
             {(Object.keys(MOOD) as MoodKey[]).map((k) => (
@@ -159,7 +159,7 @@ export default function Write() {
             value={weather}
             size="large"
             name="weather"
-            onValueChange={(v) => setWeather(v as WeatherKey)}
+            onChange={(v: string) => setWeather(v as WeatherKey)}
             disabled={loading}
           >
             {(Object.keys(WEATHER) as WeatherKey[]).map((k) => (
@@ -195,9 +195,9 @@ export default function Write() {
 
       <footer>
         <FixedBottomCTA
-          loading={loading}         // <-- 여기
-          onClick={onSaveAnalyze}
-          disabled={isDisabled}      // 로딩 중에도 비활성화
+          loading={loading}         
+          {...({ onClick: onSaveAnalyze } as any)}
+          disabled={isDisabled}     
         >
           저장하고 AI 분석 받기
         </FixedBottomCTA>

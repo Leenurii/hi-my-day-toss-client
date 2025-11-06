@@ -14,9 +14,15 @@
   background: #eaeef3;
 }
 .react-calendar__tile--now {
-  background: #eef6ff;
+  background: #EFF6FF !important;   
+  color: #1D4ED8 !important;        
+  font-weight: 600;
   border-radius: 8px;
-  color: #111;
+}
+.react-calendar__tile--now:enabled:hover,
+.react-calendar__tile--now:enabled:focus {
+  background: #DBEAFE !important;   
+  color: #1D4ED8 !important;
 }
 .react-calendar__month-view__days {
   /* gap: 6px; */

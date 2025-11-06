@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { Top, ListRow } from '@toss/tds-mobile'
+import { Top } from '@toss/tds-mobile'
 import { apiFetch } from '@/libs/api'
 import PageSkeleton from '@/components/PageSkeleton'
 
@@ -27,12 +27,19 @@ export default function EntryResult() {
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  type EntryDetail = {
+    id: number
+    original_lang: 'en' | 'ko'
+    original_text: string
+    analysis?: Analysis
+  }
+
   useEffect(() => {
     ;(async () => {
       try {
         setError(null)
         setLoading(true)
-        const detail = await apiFetch(`/api/entries/${id}/`)
+        const detail = await apiFetch<EntryDetail>(`/api/entries/${id}/`)
         setData(detail)
       } catch (e: any) {
         setError(e?.message ?? '데이터를 불러오지 못했습니다.')
@@ -50,9 +57,7 @@ export default function EntryResult() {
   const translationSubText = isOriginalEnglish
     ? '한국어로 이런 느낌이에요.'
     : '자연스러운 영어 문장.'
-  const translationRowTopLabel = isOriginalEnglish
-    ? '한국어로 해석하면'
-    : '영어 표현으로 하면'
+  
 
   // 공통 스타일 (useMemo로 한번만 만들어서 재사용)
   const styles = useMemo(() => {
@@ -297,6 +302,26 @@ export default function EntryResult() {
         fontSize: 14,
         color: textSecondary,
       },
+      translationTopLabel: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#6B7280', // textSecondary 톤
+        lineHeight: 1.4,
+        marginBottom: 6,
+      },
+      translationTextBox: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        border: `1px solid rgba(0,0,0,0.06)`,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+        padding: '12px 14px',
+        fontSize: 14,
+        lineHeight: 1.5,
+        color: '#111827',
+        whiteSpace: 'pre-wrap' as const,
+        wordBreak: 'break-word' as const,
+      },
+
     }
   }, [data?.original_lang])
 
@@ -436,17 +461,10 @@ export default function EntryResult() {
             </div>
 
             <div style={styles.translationRowWrapper}>
-              <ListRow
-                style={styles.translationRow as any}
-                left={<ListRow.AssetIcon name="icon-pencil" />}
-                contents={
-                  <ListRow.Texts
-                    type="2RowTypeA"
-                    top={translationRowTopLabel}
-                    bottom={data.analysis.translation.text}
-                  />
-                }
-              />
+
+              <div style={styles.translationTextBox}>
+                {data.analysis.translation.text}
+              </div>
             </div>
           </section>
         )}

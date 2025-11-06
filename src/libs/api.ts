@@ -1,3 +1,4 @@
+
 // src/libs/api.ts
 export class ApiError extends Error {
   status: number
@@ -9,6 +10,10 @@ export class ApiError extends Error {
     this.payload = payload
   }
 }
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+console.log(API_BASE)
+console.log('API_BASE:', import.meta.env.VITE_API_BASE_URL)
 
 type ApiInput = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -32,8 +37,12 @@ export async function apiFetch<T = unknown>(path: string, options: ApiInput = {}
     const jwt = await getJWT()
     if (jwt) baseHeaders.Authorization = `Bearer ${jwt}`
   }
+  const url = path.startsWith('http')
+    ? path                     
+    : `${API_BASE}${path}`     
 
-  const res = await fetch(path, {
+
+  const res = await fetch(url, {
     method,
     headers: baseHeaders,
     body: body != null ? JSON.stringify(body) : undefined,
