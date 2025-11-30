@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   FixedBottomCTA,
   Asset,
@@ -12,6 +12,7 @@ import {
 import { apiFetch } from '@/libs/api'
 import { useNavigate } from 'react-router-dom'
 import { formatApiError } from '@/libs/errors'
+import { GoogleAdMob } from '@apps-in-toss/web-framework'  // ✅ 추가
 
 type WeatherKey = 'sunny' | 'cloudy' | 'rainy' | 'snowy'
 type MoodKey = 'very_bad' | 'bad' | 'neutral' | 'good' | 'very_good'
@@ -31,6 +32,11 @@ const MOOD: Record<MoodKey, { label: string; emojiSrc: string }> = {
   very_good:{ label: '아주좋음',  emojiSrc: 'https://static.toss.im/3d-emojis/u1F60D.png' },
 }
 
+// ✅ 콘솔에서 발급받은 광고 그룹 ID 넣기
+const AD_GROUP_ID = 'ait-ad-test-rewarded-id'
+
+type AdLoadStatus = 'not_loaded' | 'loaded' | 'failed'
+
 export default function Write() {
   const navigate = useNavigate()
   const { openAlert } = useDialog()
@@ -46,7 +52,10 @@ export default function Write() {
   const [weather, setWeather] = useState<WeatherKey>('sunny')
   const [mood, setMood] = useState<MoodKey>('good')
 
-  // 검증: 공백/개행 포함 "문자 수" 기준
+  // ✅ 광고 로드 상태
+  const [adLoadStatus, setAdLoadStatus] = useState<AdLoadStatus>('not_loaded')
+
+  // 검증
   const MIN_CHARS = 50
   const charCount = text.length
   const hasError = charCount > 0 && charCount < MIN_CHARS
@@ -58,10 +67,58 @@ export default function Write() {
     ? `${MIN_CHARS}자 이상 작성해 주세요. (현재 ${charCount}자)`
     : `${charCount}자`
 
-  const onSaveAnalyze = async () => {
-    // 이미 전송 중이면 중복 실행 막기
-    if (loading) return
+  const isDisabled =
+    loading ||
+    !title.trim() ||
+    !text.trim() ||
+    titleError ||
+    bodyError
 
+  // ✅ 광고 미리 로드하는 함수
+  const loadAd = useCallback(() => {
+    if (GoogleAdMob.loadAppsInTossAdMob.isSupported() !== true) {
+      console.log('AdMob not supported in this environment')
+      return
+    }
+
+    setAdLoadStatus('not_loaded')
+
+    const cleanup = GoogleAdMob.loadAppsInTossAdMob({
+      options: {
+        adGroupId: AD_GROUP_ID,
+      },
+      onEvent: (event) => {
+        console.log('[AdMob load event]', event.type, event.data)
+        switch (event.type) {
+          case 'loaded':
+            setAdLoadStatus('loaded')
+            break
+          // 필요하다면 다른 이벤트도 핸들링 가능
+        }
+      },
+      onError: (error) => {
+        console.error('광고 불러오기 실패', error)
+        setAdLoadStatus('failed')
+      },
+    })
+
+    return cleanup
+  }, [])
+
+  // ✅ 페이지 진입 시 한 번 광고 로드
+  useEffect(() => {
+    const cleanup = loadAd()
+    return () => {
+      // loadAppsInTossAdMob가 반환하는 cleanup 있으면 실행
+      if (typeof cleanup === 'function') {
+        cleanup()
+      }
+    }
+  }, [loadAd])
+
+  // ✅ 실제로 API를 호출해서 저장 + 분석하는 함수 (기존 onSaveAnalyze 분리)
+  const runAnalyze = async () => {
+    if (loading) return
     setLoading(true)
 
     try {
@@ -79,26 +136,69 @@ export default function Write() {
 
       await apiFetch(`/api/entries/${entry.id}/analyze/`, { method: 'POST' })
 
-      // 성공하면 디테일 페이지로 이동
       navigate(`/entries/${entry.id}`)
     } catch (err: unknown) {
-      // 실패 시 얼럿
       openAlert({
         title: '분석 실패',
         description: formatApiError(err),
         alertButton: '확인',
       })
-      // 실패했으니까 다시 작성 가능하게 로딩 off
       setLoading(false)
     }
   }
 
-  const isDisabled =
-    loading ||
-    !title.trim() ||
-    !text.trim() ||
-    titleError ||
-    bodyError
+  // ✅ 버튼 클릭 시: 광고 보여주고, 보상 획득 시 runAnalyze 실행
+  const handleClickAnalyze = () => {
+    if (loading) return
+    if (isDisabled) return
+
+    // AdMob 지원 + 로드된 상태면 → 광고 먼저
+    if (
+      GoogleAdMob.showAppsInTossAdMob.isSupported() === true &&
+      adLoadStatus === 'loaded'
+    ) {
+      GoogleAdMob.showAppsInTossAdMob({
+        options: {
+          adGroupId: AD_GROUP_ID,
+        },
+        onEvent: (event) => {
+          console.log('[AdMob show event]', event.type, event.data)
+
+          switch (event.type) {
+            case 'requested':
+              // 한 번 보여줬으니 다시 로드할 준비
+              setAdLoadStatus('not_loaded')
+              // 필요하면 여기서 loadAd() 다시 호출해도 됨
+              break
+
+            case 'userEarnedReward':
+              console.log('사용자가 광고를 끝까지 봤습니다. 분석 실행!')
+              runAnalyze()
+              break
+
+            case 'failedToShow':
+              console.log('광고 보여주기 실패, 그냥 무료로 분석 진행')
+              runAnalyze()
+              break
+
+            case 'dismissed':
+              console.log('광고 닫힘, 보상 미지급 → 분석 안 함')
+              // 여기서는 그냥 조용히 두고, 유저가 다시 버튼 누르게 둠
+              break
+          }
+        },
+        onError: (error) => {
+          console.error('광고 보여주기 실패', error)
+          // 광고 자체 문제면 유저에게는 손해 안 보게 그냥 분석 실행
+          runAnalyze()
+        },
+      })
+    } else {
+      // 광고 미지원/미로드 시 → 그냥 분석 실행 (웹, 개발 환경 등)
+      console.log('Ad not loaded or not supported, run analyze directly')
+      runAnalyze()
+    }
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -195,9 +295,9 @@ export default function Write() {
 
       <footer>
         <FixedBottomCTA
-          loading={loading}         
-          {...({ onClick: onSaveAnalyze } as any)}
-          disabled={isDisabled}     
+          loading={loading}
+          disabled={isDisabled}
+          {...({ onClick: handleClickAnalyze } as any)}  
         >
           저장하고 AI 분석 받기
         </FixedBottomCTA>
