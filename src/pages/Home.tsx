@@ -85,6 +85,10 @@ export default function Home() {
   const hasEntry = (date: Date) => !!calendarMap[localDateKey(date)]
 
   const handleClickDay = async (date: Date) => {
+    if (isFutureDate(date)) {
+      alert('미래 날짜의 일기는 아직 쓸 수 없어요!')
+      return
+    }
     const key = localDateKey(date)
     try {
       // 해당 날짜의 엔트리가 있는지 조회
@@ -135,6 +139,17 @@ export default function Home() {
       console.warn('goToday check error:', e?.message || e)
       navigate(`/write?date=${key}`)
     }
+  }
+
+  // 오늘 기준으로 미래 날짜인지 체크
+  const isFutureDate = (date: Date) => {
+    const today = new Date()
+
+    // 시/분/초 섞이면 꼬일 수 있으니까 날짜만 비교용 key로 변환
+    const todayKey = localDateKey(today)
+    const targetKey = localDateKey(date)
+
+    return targetKey > todayKey
   }
 
   return (
@@ -216,6 +231,9 @@ export default function Home() {
               onChange={(v) => setValue(v as Date)}
               onClickDay={handleClickDay}
               tileClassName={tileClassName}
+              tileDisabled={({ date, view }) =>
+                view === 'month' && isFutureDate(date)
+              }
             />
           </motion.section>
 
