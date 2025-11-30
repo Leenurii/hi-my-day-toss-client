@@ -31,6 +31,7 @@ const MOOD: Record<MoodKey, { label: string; emojiSrc: string }> = {
   good:     { label: '좋음',      emojiSrc: 'https://static.toss.im/3d-emojis/u1F603.png' },
   very_good:{ label: '아주좋음',  emojiSrc: 'https://static.toss.im/3d-emojis/u1F60D.png' },
 }
+const hasKorean = (text: string) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text)
 
 // ✅ 콘솔에서 발급받은 광고 그룹 ID 넣기
 const AD_GROUP_ID = 'ait-ad-test-rewarded-id'
@@ -58,14 +59,24 @@ export default function Write() {
   // 검증
   const MIN_CHARS = 50
   const charCount = text.length
-  const hasError = charCount > 0 && charCount < MIN_CHARS
 
-  const titleError = title.trim().length < 2
-  const bodyError = hasError
+  const containsKoreanInTitle = hasKorean(title)
+  const containsKoreanInBody = hasKorean(text)
 
-  const helpText = bodyError
-    ? `${MIN_CHARS}자 이상 작성해 주세요. (현재 ${charCount}자)`
-    : `${charCount}자`
+  const lengthError = charCount > 0 && charCount < MIN_CHARS
+
+  const titleError =
+    title.trim().length < 2 || containsKoreanInTitle
+
+  const bodyError =
+    lengthError || containsKoreanInBody
+
+  const helpText = containsKoreanInBody
+    ? '영어로만 작성해 주세요. 한글은 사용할 수 없어요.'
+    : lengthError
+      ? `${MIN_CHARS}자 이상 작성해 주세요. (현재 ${charCount}자)`
+      : `${charCount}자`
+
 
   const isDisabled =
     loading ||
@@ -119,7 +130,18 @@ export default function Write() {
   // ✅ 실제로 API를 호출해서 저장 + 분석하는 함수 (기존 onSaveAnalyze 분리)
   const runAnalyze = async () => {
     if (loading) return
+
+    if (hasKorean(title) || hasKorean(text)) {
+      openAlert({
+        title: '영어로만 작성해 주세요',
+        description: '현재 한글이 포함되어 있어요. 한글 대신 쉬운 영어로 적어볼까요?',
+        alertButton: '확인',
+      })
+      return
+    }
+
     setLoading(true)
+
 
     try {
       const payload = {
@@ -213,7 +235,13 @@ export default function Write() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             hasError={title.length > 0 && titleError}
-            help={title.length > 0 && titleError ? '2글자 이상 입력해 주세요.' : null}
+            help={
+              title.length > 0 && containsKoreanInTitle
+                ? '제목은 영어로만 작성해 주세요.'
+                : title.length > 0 && title.trim().length < 2
+                  ? '2글자 이상 입력해 주세요.'
+                  : null
+            }
             disabled={loading}
           />
         </section>
