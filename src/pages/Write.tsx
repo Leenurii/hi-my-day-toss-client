@@ -34,7 +34,7 @@ const MOOD: Record<MoodKey, { label: string; emojiSrc: string }> = {
 const hasKorean = (text: string) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text)
 
 // ✅ 콘솔에서 발급받은 광고 그룹 ID 넣기
-const AD_GROUP_ID = 'ait-ad-test-rewarded-id'
+const AD_GROUP_ID = 'ait.live.15ff19efe8eb4a66'
 
 type AdLoadStatus = 'not_loaded' | 'loaded' | 'failed'
 
